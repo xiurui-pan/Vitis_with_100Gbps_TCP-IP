@@ -143,7 +143,7 @@ exe: $(EXECUTABLE)
 build: $(BINARY_CONTAINERS)
 
 # Building kernel
-$(BUILD_DIR)/${XCLBIN_NAME}.xclbin: $(BINARY_CONTAINER_OBJS)
+$(BUILD_DIR)/${XCLBIN_NAME}.xclbin: $(BINARY_CONTAINER_OBJS) 
 	mkdir -p $(BUILD_DIR)
 	$(VPP) $(CLFLAGS) --temp_dir $(BUILD_DIR) -l $(LDCLFLAGS) -o'$@' $(+)
 
@@ -220,6 +220,4 @@ $(CMAC_KRNL): kernel/cmac_krnl/cmac_krnl.xml kernel/cmac_krnl/package_cmac_krnl.
 $(NETWORK_KRNL): kernel/network_krnl/network_krnl.xml kernel/network_krnl/package_network_krnl.tcl scripts/gen_xo.tcl kernel/network_krnl/src/hdl/*.sv
 	mkdir -p $(TEMP_DIR)
 	vivado -mode batch -source scripts/gen_xo.tcl -tclargs $(TEMP_DIR)/network_krnl.xo network_krnl $(TARGET) $(DEVICE) $(XSA) kernel/network_krnl/network_krnl.xml kernel/network_krnl/package_network_krnl.tcl
-
-
 

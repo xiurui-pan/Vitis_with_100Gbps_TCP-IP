@@ -30,6 +30,16 @@
 #include "../../../../common/include/communication.hpp"
 #include "hls_stream.h"
 
+// void stream2Ptr(ap_uint<512>* output, ap_uint<64> totalRxByteCnt, hls::stream<ap_uint<512> >& s_data_out )
+// {
+//      ap_uint<32> totalRxWordCnt = totalRxByteCnt >> 6;
+
+//      for (int i = 0; i < totalRxWordCnt; ++i)
+//      {
+//           output[i] = s_data_out.read();
+//      }
+// } 
+
 
 extern "C" {
 void hls_recv_krnl(
@@ -53,7 +63,8 @@ void hls_recv_krnl(
                hls::stream<pkt64>& s_axis_tcp_tx_status,
                int useConn, 
                int basePort, 
-               ap_uint<64> expectedRxByteCnt
+               ap_uint<64> expectedRxByteCnt,
+               ap_uint<512> *data_out
                       ) {
 
 
@@ -76,6 +87,8 @@ void hls_recv_krnl(
 #pragma HLS INTERFACE s_axilite port=useConn bundle = control
 #pragma HLS INTERFACE s_axilite port=basePort bundle = control
 #pragma HLS INTERFACE s_axilite port=expectedRxByteCnt bundle = control
+#pragma HLS INTERFACE m_axi port = data_out offset = slave bundle = gmem
+#pragma HLS INTERFACE s_axilite port = data_out bundle = control
 #pragma HLS INTERFACE s_axilite port = return bundle = control
 
 static hls::stream<ap_uint<512> >    s_data_out;
@@ -90,10 +103,13 @@ static hls::stream<ap_uint<512> >    s_data_out;
                s_axis_tcp_port_status);
 
           recvData(expectedRxByteCnt, 
+               s_data_out,
                s_axis_tcp_notification, 
                m_axis_tcp_read_pkg, 
                s_axis_tcp_rx_meta, 
                s_axis_tcp_rx_data);
+
+          stream2Ptr(data_out, expectedRxByteCnt, s_data_out);
 
           tie_off_tcp_open_connection(m_axis_tcp_open_connection, 
                s_axis_tcp_open_status);

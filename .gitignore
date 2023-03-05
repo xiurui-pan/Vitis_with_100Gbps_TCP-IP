@@ -1,0 +1,15 @@
+build*
+.ipcache
+.vscode
+.Xil
+_x*
+packaged_*
+tmp_*
+scripts/*.txt
+scripts/*.tcl
+kernel/common/types/network_types.svh
+v++_*
+vivado*
+xcd.log
+xrc.log
+host/host

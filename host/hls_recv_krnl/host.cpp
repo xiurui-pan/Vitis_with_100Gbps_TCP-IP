@@ -40,6 +40,13 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // #define BOARD_NUMBER 0
 // #define ARP 0x0A01D498
 
+void TCP_Client(int buffer_size){
+
+    // call iperf to generate TCP connection and data
+
+
+}
+
 void wait_for_enter(const std::string &msg) {
     std::cout << msg << std::endl;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -60,7 +67,7 @@ int main(int argc, char **argv) {
     cl::Kernel user_kernel;
     cl::Kernel network_kernel;
 
-    uint32_t local_IP = 0x0A01D498;
+    uint32_t local_IP = 0x0A01D498; // 10.1.212.152
     uint32_t boardNum = 1;
 
     
@@ -97,6 +104,7 @@ int main(int argc, char **argv) {
     auto vector_size_bytes = sizeof(int) * size;
     std::vector<int, aligned_allocator<int>> network_ptr0(size);
     std::vector<int, aligned_allocator<int>> network_ptr1(size);
+    std::vector<char, aligned_allocator<char>> user_ptr0(size);
 
 
     //OPENCL HOST CODE AREA START
@@ -137,7 +145,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     
-    wait_for_enter("\nPress ENTER to continue after setting up ILA trigger...");
+    // wait_for_enter("\nPress ENTER to continue after setting up ILA trigger...");
 
 
     // Set network kernel arguments
@@ -167,8 +175,8 @@ int main(int argc, char **argv) {
     
     uint32_t connection = 1;
     uint32_t basePort = 5001; 
-    uint32_t delayedCycles = 0;
-    uint32_t rxByteCnt = 320000;
+    // uint32_t delayedCycles = 0;
+    uint64_t rxByteCnt = 320000;
 
     if(argc >=3)
         rxByteCnt = strtol(argv[2], NULL, 10);
@@ -184,14 +192,65 @@ int main(int argc, char **argv) {
     OCL_CHECK(err, err = user_kernel.setArg(17, basePort));
     OCL_CHECK(err, err = user_kernel.setArg(18, rxByteCnt));
 
+    OCL_CHECK(err,
+            cl::Buffer buffer_w(context,
+                                CL_MEM_USE_HOST_PTR | CL_MEM_READ_WRITE,
+                                vector_size_bytes,
+                                user_ptr0.data(),
+                                &err));
+    OCL_CHECK(err, err = user_kernel.setArg(19, buffer_w));
+
     //Launch the Kernel
     auto start = std::chrono::high_resolution_clock::now();
     printf("enqueue user kernel...\n");
     OCL_CHECK(err, err = q.enqueueTask(user_kernel));
+
+
+    // fork a new thread to send messages
+    // pid_t iperf_pid = fork();
+    // if(iperf_pid == -1) {
+    //     printf("can't fork, error occured\n");
+	//     exit(EXIT_FAILURE);
+    // }
+    // else if(pid == 0) {
+    //     printf("Created child process for iperf, pid = %u\n", getpid());
+    //     const char* bandwidth = "10M";
+
+    //     char* argv_list[] = {"iperf", "-c", "10.1.212.152", "-b", bandwidth, "-i", "2", "-t", "5", "-P", 1, NULL};
+    //     execv("/usr/bin/iperf", argv_list);
+
+
+    // }
+
+
+
+    TCP_Client(rxByteCnt);
+
     OCL_CHECK(err, err = q.finish());
     auto end = std::chrono::high_resolution_clock::now();
     durationUs = (std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count() / 1000.0);
     printf("durationUs:%f\n",durationUs);
+
+    OCL_CHECK(err, err = q.enqueueMigrateMemObjects({buffer_w}, CL_MIGRATE_MEM_OBJECT_HOST));
+    q.finish();
+
+    int err_cnt = 0;
+
+    printf("Received bytes:\n");
+    for(uint64_t i = 0; i < rxByteCnt; i++){
+        char c = *(user_ptr0.data()+i);
+        // printf("%c", c);
+        if(c != 'b') {
+            printf("Err No.%d in pos %ld: %x\n", err_cnt++, i, c);
+        }
+        // else {
+        //     printf("pos %ld: %c\n", i, c);
+        // }
+        // printf("%c", *(user_ptr0.data()+i));
+
+    }
+    printf("\nReceived completed. Found %d errors.\n", err_cnt);
+
     //OPENCL HOST CODE AREA END    
 
     std::cout << "EXIT recorded" << std::endl;
