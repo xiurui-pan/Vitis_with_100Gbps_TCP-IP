@@ -1,0 +1,10 @@
+sudo ifconfig ens4 10.1.212.121/24 mtu 9000
+
+sudo tcpdump -i ens4 -XX -vvv -nn
+
+make exe TARGET=hw DEVICE=/opt/xilinx/platforms/xilinx_u55c_gen3x16_xdma_2_202110_1/xilinx_u55c_gen3x16_xdma_2_202110_1.xpfm USER_KRNL=hls_recv_krnl USER_KRNL_MODE=hls
+
+iperf -c 10.1.212.152 -i 1 -F inputdata.txt -l 4K
+
+sudo -E ../host/host ./build_dir.hw.xilinx_u55c_gen3x16_xdma_2_202110_1/network.xclbin 4194304
+
